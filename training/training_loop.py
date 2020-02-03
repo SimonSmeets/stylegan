@@ -133,9 +133,9 @@ def training_loop(
     network_snapshot_ticks  = 10,       # How often to export network snapshots?
     save_tf_graph           = False,    # Include full TensorFlow computation graph in the tfevents file?
     save_weight_histograms  = False,    # Include weight histograms in the tfevents file?
-    resume_run_id           = 3,        # Run ID or network pkl to resume training from, None = start from scratch.
-    resume_snapshot         = 1283,     # Snapshot index to resume training from, None = autodetect.
-    resume_kimg             = 1283,      # Assumed training progress at the beginning. Affects reporting and training schedule.
+    resume_run_id           = "../weights/network-snapshot-018513.pkl",        # Run ID or network pkl to resume training from, None = start from scratch.
+    resume_snapshot         = 18513,     # Snapshot index to resume training from, None = autodetect.
+    resume_kimg             = 18513,      # Assumed training progress at the beginning. Affects reporting and training schedule.
     resume_time             = 0.0):     # Assumed wallclock time at the beginning. Affects reporting.
 
     # Initialize dnnlib and TensorFlow.
@@ -144,6 +144,7 @@ def training_loop(
 
     # Load training set.
     training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True, **dataset_args)
+    testing_set = dataset.load_dataset(data_dir="../../databases/replay-attack/attack_tfrecords", verbose=True,test=True, **dataset_args)
 
     # Construct networks.
     with tf.device('/gpu:0'):
@@ -156,6 +157,16 @@ def training_loop(
             G = tflib.Network('G', num_channels=training_set.shape[0], resolution=training_set.shape[1], label_size=training_set.label_size, **G_args)
             D = tflib.Network('D', num_channels=training_set.shape[0], resolution=training_set.shape[1], label_size=training_set.label_size, **D_args)
             Gs = G.clone('Gs')
+
+
+
+    G.trainables = {}
+    new_trainable = {}
+    for x in D.trainables.items():
+        if "Dense" in x[0] or "Output" in x[0]:
+            new_trainable[x[0]] = x[1]
+    D.trainables = new_trainable
+    print(D.trainables)
     G.print_layers(); D.print_layers()
 
     print('Building TensorFlow graph...')
@@ -174,11 +185,12 @@ def training_loop(
             D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
             lod_assign_ops = [tf.assign(G_gpu.find_var('lod'), lod_in), tf.assign(D_gpu.find_var('lod'), lod_in)]
             reals, labels = training_set.get_minibatch_tf()
+            fakes, fakes_labels = testing_set.get_minibatch_tf()
             reals = process_reals(reals, lod_in, mirror_augment, training_set.dynamic_range, drange_net)
             with tf.name_scope('G_loss'), tf.control_dependencies(lod_assign_ops):
                 G_loss = dnnlib.util.call_func_by_name(G=G_gpu, D=D_gpu, opt=G_opt, training_set=training_set, minibatch_size=minibatch_split, **G_loss_args)
             with tf.name_scope('D_loss'), tf.control_dependencies(lod_assign_ops):
-                D_loss = dnnlib.util.call_func_by_name(G=G_gpu, D=D_gpu, opt=D_opt, training_set=training_set, minibatch_size=minibatch_split, reals=reals, labels=labels, **D_loss_args)
+                D_loss = dnnlib.util.call_func_by_name(G=G_gpu, D=D_gpu, opt=D_opt, training_set=training_set, minibatch_size=minibatch_split, reals=reals, labels=labels,  fakes= fakes, fakes_labels = fakes_labels, **D_loss_args)
             G_opt.register_gradients(tf.reduce_mean(G_loss), G_gpu.trainables)
             D_opt.register_gradients(tf.reduce_mean(D_loss), D_gpu.trainables)
     G_train_op = G_opt.apply_updates()

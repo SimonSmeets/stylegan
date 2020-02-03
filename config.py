@@ -10,8 +10,8 @@
 #----------------------------------------------------------------------------
 # Paths.
 
-result_dir = '/data/leuven/333/vsc33307'
-data_dir = '/node_scratch'
+result_dir = '/data/leuven/333/vsc33307/finetuning'
+data_dir = '/node_scratch/replay-attack'
 cache_dir = '/node_scratch'
 run_dir_ignore = ['results', 'datasets', 'cache']
 

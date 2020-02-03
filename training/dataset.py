@@ -225,10 +225,12 @@ class SyntheticDataset:
 #----------------------------------------------------------------------------
 # Helper func for constructing a dataset object using the given options.
 
-def load_dataset(class_name='training.dataset.TFRecordDataset', data_dir=None, verbose=False, **kwargs):
+def  load_dataset(class_name='training.dataset.TFRecordDataset', data_dir=None, verbose=False,test=False, **kwargs):
     adjusted_kwargs = dict(kwargs)
-    if 'tfrecord_dir' in adjusted_kwargs and data_dir is not None:
+    if 'tfrecord_dir' in adjusted_kwargs and data_dir is not None and not test:
         adjusted_kwargs['tfrecord_dir'] = os.path.join(data_dir, adjusted_kwargs['tfrecord_dir'])
+    elif test:
+        adjusted_kwargs['tfrecord_dir'] = data_dir
     if verbose:
         print('Streaming data using %s...' % class_name)
     dataset = dnnlib.util.get_obj_by_name(class_name)(**adjusted_kwargs)
