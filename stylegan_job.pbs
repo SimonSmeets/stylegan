@@ -1,0 +1,24 @@
+#!/usr/bin/bash
+
+#PBS -l partition=gpu
+#PBS -l nodes=1:ppn=36:gpus=4:skylake
+#PBS -l wallclock=72:00:00
+#PBS -l pmem = 5gb
+#PBS -N Stylgan_job
+#PBS -A default_project
+#PBS -m bea
+#PBS -M simon.smeets@student.kuleuven.be
+
+module load Python/3.6.4-intel-2018a
+module load cuDNN/7.6.4-CUDA-10.1.105
+module load GLib/2.54.3-GCCcore-6.4.0
+
+cd $VSC_DATA
+cp -r ffhq /node_scratch
+
+source styleganenv/bin/activate
+cd stylegan
+python train.py
+
+
+
