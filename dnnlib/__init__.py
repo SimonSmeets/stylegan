@@ -6,7 +6,7 @@
 # Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 
 from . import submission
-from . import tflib
+
 from .submission.run_context import RunContext
 
 from .submission.submit import SubmitTarget

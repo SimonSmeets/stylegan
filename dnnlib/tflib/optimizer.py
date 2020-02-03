@@ -72,7 +72,7 @@ class Optimizer:
         # Validate arguments.
         if isinstance(trainable_vars, dict):
             trainable_vars = list(trainable_vars.values())  # allow passing in Network.trainables as vars
-        print(trainable_vars)
+
         assert isinstance(trainable_vars, list) and len(trainable_vars) >= 1
         assert all(tfutil.is_tf_expression(expr) for expr in trainable_vars + [loss])
 
