@@ -1,11 +1,11 @@
 #!/usr/bin/bash
 
 #PBS -l partition=gpu
-#PBS -l nodes=1:ppn=36:gpus=4:skylake
-#PBS -l wallclock=72:00:00
-#PBS -l pmem = 5gb
-#PBS -N Stylgan_job
-#PBS -A default_project
+#PBS -l nodes=1:ppn=32:gpus=8:cascadelake
+#PBS -l walltime=99:00:00
+#PBS -l pmem=5gb
+#PBS -N stylegan_job
+#PBS -A lp_thesis_r0629695
 #PBS -m bea
 #PBS -M simon.smeets@student.kuleuven.be
 
@@ -19,6 +19,7 @@ cp -r ffhq /node_scratch
 source styleganenv/bin/activate
 cd stylegan
 python train.py
+
 
 
 
