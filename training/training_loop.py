@@ -130,7 +130,7 @@ def training_loop(
     mirror_augment          = False,    # Enable mirror augment?
     drange_net              = [-1,1],   # Dynamic range used when feeding image data to the networks.
     image_snapshot_ticks    = 1,        # How often to export image snapshots?
-    network_snapshot_ticks  = 10,       # How often to export network snapshots?
+    network_snapshot_ticks  = 1,       # How often to export network snapshots?
     save_tf_graph           = False,    # Include full TensorFlow computation graph in the tfevents file?
     save_weight_histograms  = False,    # Include weight histograms in the tfevents file?
     resume_run_id           = "../weights/network-snapshot-018513.pkl",        # Run ID or network pkl to resume training from, None = start from scratch.
@@ -143,7 +143,7 @@ def training_loop(
     tflib.init_tf(tf_config)
 
     # Load training set.
-    training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True, **dataset_args)
+    training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True,test = True, **dataset_args)
     testing_set = dataset.load_dataset(data_dir="../../databases/replay-attack/attack_tfrecords", verbose=True,test=True, **dataset_args)
 
     # Construct networks.
@@ -160,14 +160,7 @@ def training_loop(
 
 
 
-    G.trainables = {}
-    new_trainable = {}
-    for x in D.trainables.items():
-        if "Dense" in x[0] or "Output" in x[0]:
-            new_trainable[x[0]] = x[1]
-    D.trainables = new_trainable
-    print(D.trainables)
-    G.print_layers(); D.print_layers()
+
 
     print('Building TensorFlow graph...')
     with tf.name_scope('Inputs'), tf.device('/cpu:0'):
@@ -184,6 +177,15 @@ def training_loop(
             G_gpu = G if gpu == 0 else G.clone(G.name + '_shadow')
             D_gpu = D if gpu == 0 else D.clone(D.name + '_shadow')
             lod_assign_ops = [tf.assign(G_gpu.find_var('lod'), lod_in), tf.assign(D_gpu.find_var('lod'), lod_in)]
+            ##finetuning
+            G.trainables = {}
+            new_trainable = {}
+            for x in D_gpu.trainables.items():
+                if "Dense" in x[0] or "Output" in x[0]:
+                    new_trainable[x[0]] = x[1]
+            D_gpu.trainables = new_trainable
+
+
             reals, labels = training_set.get_minibatch_tf()
             fakes, fakes_labels = testing_set.get_minibatch_tf()
             reals = process_reals(reals, lod_in, mirror_augment, training_set.dynamic_range, drange_net)
@@ -191,9 +193,9 @@ def training_loop(
                 G_loss = dnnlib.util.call_func_by_name(G=G_gpu, D=D_gpu, opt=G_opt, training_set=training_set, minibatch_size=minibatch_split, **G_loss_args)
             with tf.name_scope('D_loss'), tf.control_dependencies(lod_assign_ops):
                 D_loss = dnnlib.util.call_func_by_name(G=G_gpu, D=D_gpu, opt=D_opt, training_set=training_set, minibatch_size=minibatch_split, reals=reals, labels=labels,  fakes= fakes, fakes_labels = fakes_labels, **D_loss_args)
-            G_opt.register_gradients(tf.reduce_mean(G_loss), G_gpu.trainables)
+            #G_opt.register_gradients(tf.reduce_mean(G_loss), G_gpu.trainables)
             D_opt.register_gradients(tf.reduce_mean(D_loss), D_gpu.trainables)
-    G_train_op = G_opt.apply_updates()
+    #G_train_op = G_opt.apply_updates()
     D_train_op = D_opt.apply_updates()
 
     Gs_update_op = Gs.setup_as_moving_average_of(G, beta=Gs_beta)
@@ -231,6 +233,7 @@ def training_loop(
         # Choose training parameters and configure training ops.
         sched = training_schedule(cur_nimg=cur_nimg, training_set=training_set, num_gpus=submit_config.num_gpus, **sched_args)
         training_set.configure(sched.minibatch // submit_config.num_gpus, sched.lod)
+        testing_set.configure(sched.minibatch // submit_config.num_gpus, sched.lod)
         if reset_opt_for_new_lod:
             if np.floor(sched.lod) != np.floor(prev_lod) or np.ceil(sched.lod) != np.ceil(prev_lod):
                 G_opt.reset_optimizer_state(); D_opt.reset_optimizer_state()
@@ -241,7 +244,7 @@ def training_loop(
             for _D_repeat in range(D_repeats):
                 tflib.run([D_train_op, Gs_update_op], {lod_in: sched.lod, lrate_in: sched.D_lrate, minibatch_in: sched.minibatch})
                 cur_nimg += sched.minibatch
-            tflib.run([G_train_op], {lod_in: sched.lod, lrate_in: sched.G_lrate, minibatch_in: sched.minibatch})
+            #tflib.run([G_train_op], {lod_in: sched.lod, lrate_in: sched.G_lrate, minibatch_in: sched.minibatch})
 
         # Perform maintenance tasks once per tick.
         done = (cur_nimg >= total_kimg * 1000)
