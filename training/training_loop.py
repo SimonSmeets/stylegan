@@ -144,7 +144,7 @@ def training_loop(
 
     # Load training set.
     training_set = dataset.load_dataset(data_dir=config.data_dir, verbose=True,test = True, **dataset_args)
-    testing_set = dataset.load_dataset(data_dir="../../databases/replay-attack/attack_tfrecords", verbose=True,test=True, **dataset_args)
+    testing_set = dataset.load_dataset(data_dir="/node_scratch/casia-fasd/attack_tfrecords", verbose=True,test=True, **dataset_args)
 
     # Construct networks.
     with tf.device('/gpu:0'):

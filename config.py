@@ -11,7 +11,7 @@
 # Paths.
 
 result_dir = '/data/leuven/333/vsc33307/finetuning/results'
-data_dir = '/node_scratch/replay-attack/real_tfrecords'
+data_dir = '/node_scratch/casia-fasd/real_tfrecords'
 cache_dir = '/node_scratch'
 run_dir_ignore = ['results', 'datasets', 'cache']
 
